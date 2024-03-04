@@ -1,92 +1,140 @@
-import { Helmet } from '@modern-js/runtime/head';
-import './index.css';
+import {
+  Flex,
+  Input,
+  Select,
+  SelectProps,
+  Table,
+  TableProps,
+  Button,
+} from 'antd';
+import './index.scss';
+import { useAtom, useAtomValue } from 'jotai';
+import JsonSchemaGenerator from '@/utils/JsonSchemaGenerator';
+import { Property } from '@/domains/Schema';
+import {
+  rootSchemaNameAtom,
+  inputJsonAtom,
+  activeSchemaNameAtom,
+  schemasAtom,
+  activeSchemaPropertiesGetter,
+} from '@/stores/AppStore';
 
-const Index = () => (
-  <div className="container-box">
-    <Helmet>
-      <link
-        rel="icon"
-        type="image/x-icon"
-        href="https://lf3-static.bytednsdoc.com/obj/eden-cn/uhbfnupenuhf/favicon.ico"
-      />
-    </Helmet>
-    <main>
-      <div className="title">
-        Welcome to
-        <img
-          className="logo"
-          src="https://lf3-static.bytednsdoc.com/obj/eden-cn/zq-uylkvT/ljhwZthlaukjlkulzlp/modern-js-logo.svg"
-          alt="Modern.js Logo"
+const generator = new JsonSchemaGenerator();
+
+const Index = () => {
+  const [rootSchemaName, setRootSchemaName] = useAtom(rootSchemaNameAtom);
+  const [inputJson, setInputJson] = useAtom(inputJsonAtom);
+  const [activeSchemaName, setActiveSchemaName] = useAtom(activeSchemaNameAtom);
+  const [schemas, setSchemas] = useAtom(schemasAtom);
+  const activeSchemaProperties = useAtomValue(activeSchemaPropertiesGetter);
+
+  const schemaOptions: SelectProps['options'] = [];
+  for (const schema of schemas) {
+    schemaOptions.push({
+      key: schema.name,
+      label: schema.name,
+      value: schema.name,
+    });
+  }
+
+  const columns: TableProps<Property>['columns'] = [
+    {
+      key: 'name',
+      title: '属性',
+      dataIndex: 'name',
+    },
+    {
+      key: 'types',
+      title: '类型',
+      dataIndex: 'types',
+      render: (types: Property['types']) => {
+        return `${types.join(' | ')}`;
+      },
+    },
+    {
+      key: 'buttons',
+      title: '操作',
+      dataIndex: 'name',
+      render: (field: string, record: Property) => {
+        const buttons: React.ReactNode[] = [];
+        const hasAny =
+          record.types.filter(
+            t =>
+              t === 'any' ||
+              t === 'any[]' ||
+              t === 'object' ||
+              t === 'object[]',
+          ).length > 0;
+        if (hasAny) {
+          buttons.push(<Button>继续解析</Button>);
+        }
+        return buttons;
+      },
+      width: 100,
+    },
+  ];
+
+  function parse() {
+    console.info('开始解析');
+    try {
+      const json = JSON.parse(inputJson);
+      generator.parse(rootSchemaName, json);
+      setSchemas(generator.schemas);
+    } catch (error) {
+      console.error('JSON解析出错：', error);
+    }
+  }
+
+  return (
+    <Flex>
+      <Flex
+        flex={1}
+        vertical
+        style={{ marginTop: 8, marginRight: 4, marginBottom: 8, marginLeft: 8 }}
+        gap={8}
+      >
+        <Flex gap={8}>
+          <Input
+            value={rootSchemaName}
+            placeholder={'模式名称'}
+            onChange={event => setRootSchemaName(event.target.value)}
+          />
+          <Button type={'primary'} onClick={() => parse()}>
+            解析
+          </Button>
+        </Flex>
+        <Input.TextArea
+          value={inputJson}
+          autoSize={{ minRows: 38 }}
+          onChange={event => setInputJson(event.target.value)}
         />
-        <p className="name">Modern.js</p>
-      </div>
-      <p className="description">
-        Get started by editing <code className="code">src/routes/page.tsx</code>
-      </p>
-      <div className="grid">
-        <a
-          href="https://modernjs.dev/guides/get-started/introduction.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="card"
-        >
-          <h2>
-            Guide
-            <img
-              className="arrow-right"
-              src="https://lf3-static.bytednsdoc.com/obj/eden-cn/zq-uylkvT/ljhwZthlaukjlkulzlp/arrow-right.svg"
-            />
-          </h2>
-          <p>Follow the guides to use all features of Modern.js.</p>
-        </a>
-        <a
-          href="https://modernjs.dev/tutorials/foundations/introduction.html"
-          target="_blank"
-          className="card"
-          rel="noreferrer"
-        >
-          <h2>
-            Tutorials
-            <img
-              className="arrow-right"
-              src="https://lf3-static.bytednsdoc.com/obj/eden-cn/zq-uylkvT/ljhwZthlaukjlkulzlp/arrow-right.svg"
-            />
-          </h2>
-          <p>Learn to use Modern.js to create your first application.</p>
-        </a>
-        <a
-          href="https://modernjs.dev/configure/app/usage.html"
-          target="_blank"
-          className="card"
-          rel="noreferrer"
-        >
-          <h2>
-            Config
-            <img
-              className="arrow-right"
-              src="https://lf3-static.bytednsdoc.com/obj/eden-cn/zq-uylkvT/ljhwZthlaukjlkulzlp/arrow-right.svg"
-            />
-          </h2>
-          <p>Find all configuration options provided by Modern.js.</p>
-        </a>
-        <a
-          href="https://github.com/web-infra-dev/modern.js"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="card"
-        >
-          <h2>
-            Github
-            <img
-              className="arrow-right"
-              src="https://lf3-static.bytednsdoc.com/obj/eden-cn/zq-uylkvT/ljhwZthlaukjlkulzlp/arrow-right.svg"
-            />
-          </h2>
-          <p>View the source code of Github, feel free to contribute.</p>
-        </a>
-      </div>
-    </main>
-  </div>
-);
+      </Flex>
+      <Flex
+        flex={1}
+        vertical
+        gap={8}
+        style={{ marginTop: 8, marginRight: 4, marginBottom: 8, marginLeft: 8 }}
+      >
+        <Select
+          value={activeSchemaName}
+          options={schemaOptions}
+          placeholder={'请选择模式'}
+          onChange={value => {
+            console.info('模式切换为：', value);
+            setActiveSchemaName(value);
+          }}
+        />
+        <Table columns={columns} dataSource={activeSchemaProperties} />
+      </Flex>
+      <Flex
+        flex={1}
+        vertical
+        style={{ marginTop: 8, marginRight: 8, marginBottom: 8, marginLeft: 4 }}
+      >
+        <Input.TextArea disabled autoSize={{ minRows: 40 }} />
+      </Flex>
+    </Flex>
+  );
+};
 
 export default Index;
